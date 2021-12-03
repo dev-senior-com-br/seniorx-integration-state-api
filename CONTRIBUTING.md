@@ -1,0 +1,1 @@
+# SeniorX Integration State API
