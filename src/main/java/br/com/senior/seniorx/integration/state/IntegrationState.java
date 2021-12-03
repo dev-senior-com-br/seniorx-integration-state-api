@@ -1,4 +1,4 @@
-package br.com.senior.seniorx.integration.parameter;
+package br.com.senior.seniorx.integration.state;
 
 public interface IntegrationState {
 

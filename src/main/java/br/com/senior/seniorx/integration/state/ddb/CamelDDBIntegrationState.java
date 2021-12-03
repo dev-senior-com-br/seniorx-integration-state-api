@@ -1,4 +1,4 @@
-package br.com.senior.seniorx.integration.parameter.ddb;
+package br.com.senior.seniorx.integration.state.ddb;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,8 +17,8 @@ import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 
-import br.com.senior.seniorx.integration.parameter.IntegrationState;
-import br.com.senior.seniorx.integration.parameter.IntegrationStateException;
+import br.com.senior.seniorx.integration.state.IntegrationState;
+import br.com.senior.seniorx.integration.state.IntegrationStateException;
 
 public class CamelDDBIntegrationState implements IntegrationState {
 
@@ -26,7 +26,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
     private static final String SELECTOR_HEADER_NOT_FOUND = "Selector header not found";
     private static final String INTEGRATION_ID_HEADER = "integration_id";
     private static final String TENANT_FIELD = "Tenant";
-    private static final String KEY_FIELD = "Key";
+    private static final String ID_FIELD = "Id";
     private static final String STATE_FIELD = "State";
 
     private final Exchange exchange;
@@ -62,7 +62,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
         PutItemRequest request = new PutItemRequest().withTableName(table);
         Map<String, AttributeValue> item = new HashMap<>();
         item.put(TENANT_FIELD, new AttributeValue(tenant));
-        item.put(KEY_FIELD, new AttributeValue(integrationName + '-' + id));
+        item.put(ID_FIELD, new AttributeValue(integrationName + '-' + id));
         item.put(STATE_FIELD, new AttributeValue(message.getBody().toString()));
         request.withItem(item);
         ddb.putItem(request);
@@ -85,7 +85,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(KEY_FIELD, new AttributeValue(integrationName + '-' + id));
+        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + id));
 
         GetItemRequest request = new GetItemRequest().withKey(key).withTableName(table);
         Map<String, AttributeValue> item = ddb.getItem(request).getItem();
@@ -116,7 +116,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(KEY_FIELD, new AttributeValue(integrationName + '-' + id));
+        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + id));
 
         DeleteItemRequest request = new DeleteItemRequest().withKey(key).withTableName(table);
         ddb.deleteItem(request);

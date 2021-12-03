@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.0.2-alpha] - 2021-12-03
+
+### Fixed
+
+- Fixed id fields name.
+
 ## [0.0.1-alpha] - 2021-12-03
 
 ### Added
