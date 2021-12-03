@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-alpha] - 2021-12-03
+
 ### Added
 
 ### Changed
@@ -19,5 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Save, get and delete integration state.
+-   Save, get and delete integration state.
 
+[Unreleased]: https://github.com/dev-senior-com-br/seniorx-integration-state-api/compare/0.0.1-alpha...HEAD
+
+[0.0.1-alpha]: https://github.com/dev-senior-com-br/seniorx-integration-state-api/compare/0.0.1-alpha...0.0.1-alpha
