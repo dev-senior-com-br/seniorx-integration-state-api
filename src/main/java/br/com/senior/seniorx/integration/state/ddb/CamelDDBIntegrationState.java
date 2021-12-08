@@ -100,7 +100,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
         if (item == null) {
             return null;
         }
-        AttributeValue state = item.get(STATE_FIELD);
+        AttributeValue state = item.get(DATA_FIELD);
         if (state == null) {
             return null;
         }
