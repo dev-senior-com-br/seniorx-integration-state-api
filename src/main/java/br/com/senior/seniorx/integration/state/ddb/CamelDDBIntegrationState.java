@@ -16,6 +16,8 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.senior.seniorx.integration.state.IntegrationState;
 import br.com.senior.seniorx.integration.state.IntegrationStateException;
@@ -65,7 +67,13 @@ public class CamelDDBIntegrationState implements IntegrationState {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put(TENANT_FIELD, new AttributeValue(tenant));
         item.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
-        item.put(DATA_FIELD, new AttributeValue(message.getBody().toString()));
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            String json = mapper.writeValueAsString(message.getBody());
+            item.put(DATA_FIELD, new AttributeValue(json));
+        } catch (JsonProcessingException e) {
+            throw new IntegrationStateException(e);
+        }
         if (state != null) {
             item.put(STATE_FIELD, new AttributeValue(state));
             if (stateMessage != null) {
@@ -77,7 +85,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
     }
 
     @Override
-    public String get() {
+    public <T> T get(Class<T> dataClass) {
         Object selector = exchange.getIn().getHeader(SELECTOR_HEADER);
         if (selector == null) {
             throw new IntegrationStateException(SELECTOR_HEADER_NOT_FOUND);
@@ -104,7 +112,14 @@ public class CamelDDBIntegrationState implements IntegrationState {
         if (state == null) {
             return null;
         }
-        return state.getS();
+        String json = state.getS();
+
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readValue(json, dataClass);
+        } catch (JsonProcessingException e) {
+            throw new IntegrationStateException(e);
+        }
     }
 
     @Override

@@ -12,7 +12,7 @@ public interface IntegrationState {
 
     void put(String state, String stateMessage);
 
-    String get();
+    <T> T get(Class<T> dataClass);
 
     void delete();
 
