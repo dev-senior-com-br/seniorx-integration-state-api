@@ -8,4 +8,8 @@ public class IntegrationStateException extends RuntimeException {
         super(message);
     }
 
+    public IntegrationStateException(Throwable cause) {
+        super(cause);
+    }
+
 }

@@ -9,21 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Save, get and delete integration state.
+
 ### Changed
 
 ### Fixed
 
 ### Removed
-
-## [0.0.2-alpha] - 2021-12-03
-
-### Fixed
-
-- Fixed id fields name.
-
-## [0.0.1-alpha] - 2021-12-03
-
-### Added
-
-- Save, get and delete integration state.
-

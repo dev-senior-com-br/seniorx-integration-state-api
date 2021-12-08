@@ -24,10 +24,12 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
     private static final String SELECTOR_HEADER = "selector";
     private static final String SELECTOR_HEADER_NOT_FOUND = "Selector header not found";
-    private static final String INTEGRATION_ID_HEADER = "integration_id";
+    private static final String CONTEXT = "context";
     private static final String TENANT_FIELD = "Tenant";
     private static final String ID_FIELD = "Id";
+    private static final String DATA_FIELD = "Data";
     private static final String STATE_FIELD = "State";
+    private static final String STATE_MESSAGE_FIELD = "StateMessage";
 
     private final Exchange exchange;
     private final AmazonDynamoDB ddb;
@@ -42,7 +44,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
     }
 
     @Override
-    public void put() {
+    public void put(String state, String stateMessage) {
         Object selector = exchange.getIn().getHeader(SELECTOR_HEADER);
         if (selector == null) {
             throw new IntegrationStateException(SELECTOR_HEADER_NOT_FOUND);
@@ -50,20 +52,26 @@ public class CamelDDBIntegrationState implements IntegrationState {
         String tenant = selector.toString();
 
         Message message = exchange.getMessage();
-        Object currentId = message.getHeader(INTEGRATION_ID_HEADER);
-        String id;
-        if (currentId != null) {
-            id = currentId.toString();
+        Object currentContext = message.getHeader(CONTEXT);
+        String context;
+        if (currentContext != null) {
+            context = currentContext.toString();
         } else {
-            id = UUID.randomUUID().toString();
-            message.setHeader(INTEGRATION_ID_HEADER, id);
+            context = UUID.randomUUID().toString();
+            message.setHeader(CONTEXT, context);
         }
 
         PutItemRequest request = new PutItemRequest().withTableName(table);
         Map<String, AttributeValue> item = new HashMap<>();
         item.put(TENANT_FIELD, new AttributeValue(tenant));
-        item.put(ID_FIELD, new AttributeValue(integrationName + '-' + id));
-        item.put(STATE_FIELD, new AttributeValue(message.getBody().toString()));
+        item.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
+        item.put(DATA_FIELD, new AttributeValue(message.getBody().toString()));
+        if (state != null) {
+            item.put(STATE_FIELD, new AttributeValue(state));
+            if (stateMessage != null) {
+                item.put(STATE_MESSAGE_FIELD, new AttributeValue(stateMessage));
+            }
+        }
         request.withItem(item);
         ddb.putItem(request);
     }
@@ -77,15 +85,15 @@ public class CamelDDBIntegrationState implements IntegrationState {
         String tenant = selector.toString();
 
         Message message = exchange.getMessage();
-        Object currentId = message.getHeader(INTEGRATION_ID_HEADER);
-        if (currentId == null) {
+        Object currentContext = message.getHeader(CONTEXT);
+        if (currentContext == null) {
             return null;
         }
-        String id = currentId.toString();
+        String context = currentContext.toString();
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + id));
+        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
 
         GetItemRequest request = new GetItemRequest().withKey(key).withTableName(table);
         Map<String, AttributeValue> item = ddb.getItem(request).getItem();
@@ -108,15 +116,15 @@ public class CamelDDBIntegrationState implements IntegrationState {
         String tenant = selector.toString();
 
         Message message = exchange.getMessage();
-        Object currentId = message.getHeader(INTEGRATION_ID_HEADER);
-        if (currentId == null) {
+        Object currentContext = message.getHeader(CONTEXT);
+        if (currentContext == null) {
             return;
         }
-        String id = currentId.toString();
+        String context = currentContext.toString();
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + id));
+        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
 
         DeleteItemRequest request = new DeleteItemRequest().withKey(key).withTableName(table);
         ddb.deleteItem(request);
