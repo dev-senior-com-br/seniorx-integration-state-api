@@ -73,8 +73,9 @@ public class CamelDDBIntegrationState implements IntegrationState {
         String key = stateKey(context);
         item.put(ID_FIELD, new AttributeValue(key));
         ObjectMapper mapper = new ObjectMapper();
+        String json;
         try {
-            String json = mapper.writeValueAsString(message.getBody());
+            json = mapper.writeValueAsString(message.getBody());
             item.put(DATA_FIELD, new AttributeValue(json));
         } catch (JsonProcessingException e) {
             throw new IntegrationStateException(e);
@@ -86,7 +87,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
             }
         }
         request.withItem(item);
-        LOGGER.info("Saving state {} with message {} for context {} for tenant {}.", state, stateMessage, key, tenant);
+        LOGGER.info("Saving state {} with message {} and body {} for context {} for tenant {}.", state, stateMessage, json, key, tenant);
         ddb.putItem(request);
     }
 
