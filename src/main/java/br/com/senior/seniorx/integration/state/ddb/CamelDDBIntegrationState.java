@@ -66,7 +66,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
         PutItemRequest request = new PutItemRequest().withTableName(table);
         Map<String, AttributeValue> item = new HashMap<>();
         item.put(TENANT_FIELD, new AttributeValue(tenant));
-        item.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
+        item.put(ID_FIELD, new AttributeValue(stateKey(context)));
         ObjectMapper mapper = new ObjectMapper();
         try {
             String json = mapper.writeValueAsString(message.getBody());
@@ -82,6 +82,10 @@ public class CamelDDBIntegrationState implements IntegrationState {
         }
         request.withItem(item);
         ddb.putItem(request);
+    }
+
+    private String stateKey(String context) {
+        return integrationName + ':' + context;
     }
 
     @Override
@@ -101,7 +105,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
+        key.put(ID_FIELD, new AttributeValue(stateKey(context)));
 
         GetItemRequest request = new GetItemRequest().withKey(key).withTableName(table);
         Map<String, AttributeValue> item = ddb.getItem(request).getItem();
@@ -139,7 +143,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(ID_FIELD, new AttributeValue(integrationName + '-' + context));
+        key.put(ID_FIELD, new AttributeValue(stateKey(context)));
 
         DeleteItemRequest request = new DeleteItemRequest().withKey(key).withTableName(table);
         ddb.deleteItem(request);
