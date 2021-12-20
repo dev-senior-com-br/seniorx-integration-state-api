@@ -14,6 +14,12 @@ public interface IntegrationState {
 
     <T> T get(Class<T> dataClass);
 
+    default void update(String state) {
+        update(state, null);
+    }
+
+    void update(String state, String stateMessage);
+
     void delete();
 
 }

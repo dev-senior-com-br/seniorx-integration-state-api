@@ -15,9 +15,11 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -30,6 +32,9 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
     private static final String SELECTOR_HEADER = "selector";
     private static final String SELECTOR_HEADER_NOT_FOUND = "Selector header not found";
+    private static final String CONTEXT_HEADER_NOT_FOUND = "Context header not found";
+    private static final String STATE_NOT_FOUND = "State not found";
+    private static final String STATE_PAYLOAD_NOT_FOUND = "State payload not found";
     private static final String CONTEXT = "context";
     private static final String TENANT_FIELD = "Tenant";
     private static final String ID_FIELD = "Id";
@@ -51,11 +56,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
     @Override
     public void put(String state, String stateMessage) {
-        Object selector = exchange.getIn().getHeader(SELECTOR_HEADER);
-        if (selector == null) {
-            throw new IntegrationStateException(SELECTOR_HEADER_NOT_FOUND);
-        }
-        String tenant = selector.toString();
+        String tenant = getTenant();
 
         Message message = exchange.getMessage();
         Object currentContext = message.getHeader(CONTEXT);
@@ -93,34 +94,20 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
     @Override
     public <T> T get(Class<T> dataClass) {
-        Object selector = exchange.getIn().getHeader(SELECTOR_HEADER);
-        if (selector == null) {
-            throw new IntegrationStateException(SELECTOR_HEADER_NOT_FOUND);
-        }
-        String tenant = selector.toString();
+        String tenant = getTenant();
 
-        Message message = exchange.getMessage();
-        Object currentContext = message.getHeader(CONTEXT);
-        if (currentContext == null) {
-            LOGGER.info("Context header not found (message: {}, headers {})", message, message.getHeaders());
-            return null;
-        }
-        String context = currentContext.toString();
+        String context = getContext();
 
-        Map<String, AttributeValue> key = new HashMap<>();
-        key.put(TENANT_FIELD, new AttributeValue(tenant));
-        key.put(ID_FIELD, new AttributeValue(stateKey(context)));
+        Map<String, AttributeValue> key = getKey(tenant, context);
 
         GetItemRequest request = new GetItemRequest().withKey(key).withTableName(table);
         Map<String, AttributeValue> item = ddb.getItem(request).getItem();
         if (item == null) {
-            LOGGER.info("State not found for context {} for tenant {}.", key, tenant);
-            return null;
+            throw new IntegrationStateException(STATE_NOT_FOUND);
         }
         AttributeValue state = item.get(DATA_FIELD);
         if (state == null) {
-            LOGGER.info("State not found for context {} for tenant {}.", key, tenant);
-            return null;
+            throw new IntegrationStateException(STATE_PAYLOAD_NOT_FOUND);
         }
         String json = state.getS();
 
@@ -133,26 +120,60 @@ public class CamelDDBIntegrationState implements IntegrationState {
     }
 
     @Override
+    public void update(String state, String stateMessage) {
+        String tenant = getTenant();
+
+        String context = getContext();
+
+        Map<String, AttributeValue> key = getKey(tenant, context);
+
+        UpdateItemRequest request = new UpdateItemRequest().withKey(key).withTableName(table);
+        Map<String, AttributeValueUpdate> item = new HashMap<>();
+        if (state != null) {
+            item.put(STATE_FIELD, new AttributeValueUpdate(new AttributeValue(state), "PUT"));
+            if (stateMessage != null) {
+                item.put(STATE_MESSAGE_FIELD, new AttributeValueUpdate(new AttributeValue(stateMessage), "PUT"));
+            }
+        }
+        request.withAttributeUpdates(item);
+        LOGGER.info("Updating state {} with message {} for context {} for tenant {}.", state, stateMessage, key, tenant);
+        ddb.updateItem(request);
+    }
+
+    @Override
     public void delete() {
+        String tenant = getTenant();
+
+        String context = getContext();
+
+        Map<String, AttributeValue> key = getKey(tenant, context);
+
+        DeleteItemRequest request = new DeleteItemRequest().withKey(key).withTableName(table);
+        LOGGER.info("Deleting state for context {} for tenant {}.", key, tenant);
+        ddb.deleteItem(request);
+    }
+
+    private String getTenant() {
         Object selector = exchange.getIn().getHeader(SELECTOR_HEADER);
         if (selector == null) {
             throw new IntegrationStateException(SELECTOR_HEADER_NOT_FOUND);
         }
-        String tenant = selector.toString();
+        return selector.toString();
+    }
 
-        Message message = exchange.getMessage();
-        Object currentContext = message.getHeader(CONTEXT);
+    private String getContext() {
+        Object currentContext = exchange.getMessage().getHeader(CONTEXT);
         if (currentContext == null) {
-            return;
+            throw new IntegrationStateException(CONTEXT_HEADER_NOT_FOUND);
         }
-        String context = currentContext.toString();
+        return currentContext.toString();
+    }
 
+    private Map<String, AttributeValue> getKey(String tenant, String context) {
         Map<String, AttributeValue> key = new HashMap<>();
         key.put(TENANT_FIELD, new AttributeValue(tenant));
         key.put(ID_FIELD, new AttributeValue(stateKey(context)));
-
-        DeleteItemRequest request = new DeleteItemRequest().withKey(key).withTableName(table);
-        ddb.deleteItem(request);
+        return key;
     }
 
     private String stateKey(String context) {
