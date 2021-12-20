@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.spi.PropertiesComponent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -23,6 +25,8 @@ import br.com.senior.seniorx.integration.state.IntegrationState;
 import br.com.senior.seniorx.integration.state.IntegrationStateException;
 
 public class CamelDDBIntegrationState implements IntegrationState {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CamelDDBIntegrationState.class);
 
     private static final String SELECTOR_HEADER = "selector";
     private static final String SELECTOR_HEADER_NOT_FOUND = "Selector header not found";
@@ -66,7 +70,8 @@ public class CamelDDBIntegrationState implements IntegrationState {
         PutItemRequest request = new PutItemRequest().withTableName(table);
         Map<String, AttributeValue> item = new HashMap<>();
         item.put(TENANT_FIELD, new AttributeValue(tenant));
-        item.put(ID_FIELD, new AttributeValue(stateKey(context)));
+        String key = stateKey(context);
+        item.put(ID_FIELD, new AttributeValue(key));
         ObjectMapper mapper = new ObjectMapper();
         try {
             String json = mapper.writeValueAsString(message.getBody());
@@ -81,11 +86,8 @@ public class CamelDDBIntegrationState implements IntegrationState {
             }
         }
         request.withItem(item);
+        LOGGER.info("Saving state {} with message {} for context {} for tenant {}.", state, stateMessage, key, tenant);
         ddb.putItem(request);
-    }
-
-    private String stateKey(String context) {
-        return integrationName + ':' + context;
     }
 
     @Override
@@ -99,6 +101,7 @@ public class CamelDDBIntegrationState implements IntegrationState {
         Message message = exchange.getMessage();
         Object currentContext = message.getHeader(CONTEXT);
         if (currentContext == null) {
+            LOGGER.info("Context header not found (message: {}, headers {})", message, message.getHeaders());
             return null;
         }
         String context = currentContext.toString();
@@ -110,10 +113,12 @@ public class CamelDDBIntegrationState implements IntegrationState {
         GetItemRequest request = new GetItemRequest().withKey(key).withTableName(table);
         Map<String, AttributeValue> item = ddb.getItem(request).getItem();
         if (item == null) {
+            LOGGER.info("State not found for context {} for tenant {}.", key, tenant);
             return null;
         }
         AttributeValue state = item.get(DATA_FIELD);
         if (state == null) {
+            LOGGER.info("State not found for context {} for tenant {}.", key, tenant);
             return null;
         }
         String json = state.getS();
@@ -147,6 +152,10 @@ public class CamelDDBIntegrationState implements IntegrationState {
 
         DeleteItemRequest request = new DeleteItemRequest().withKey(key).withTableName(table);
         ddb.deleteItem(request);
+    }
+
+    private String stateKey(String context) {
+        return integrationName + ':' + context;
     }
 
     private AmazonDynamoDB connectToDynamoDB() {
