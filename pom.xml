@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>br.com.senior</groupId>
 	<artifactId>seniorx-integration-state-api</artifactId>
-	<version>0.0.9-alpha</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>Senior X Integration State API</name>
